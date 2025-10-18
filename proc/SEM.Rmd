@@ -1,0 +1,79 @@
+---
+title: "SEM"
+author: "rmoraga"
+date: "2025-10-18"
+output: html_document
+---
+
+#Librerías
+```{r}
+library(openxlsx)
+library(lavaan)
+```
+
+#Abrir base
+```{r}
+db<-read.xlsx("imput/db_final.xlsx")
+```
+
+
+```{r}
+modelo_latente1 <- "
+# Modelo de medición
+PEIEL =~ PEIEL_1 + PEIEL_2 + PEIEL_3 + PEIEL_4 + PEIEL_5 + PEIEL_6
+EDI   =~ EDI_1   + EDI_2   + EDI_3   + EDI_4
+SWB   =~ SWB_1   + SWB_2   + SWB_3   + SWB_4 + SWB_5
+
+# Estructural (mediación simple)
+EDI ~ a*PEIEL
+SWB ~ b*EDI + c*PEIEL
+
+# Efectos
+ab      := a*b        # indirecto
+direct  := c          # directo
+total   := c + a*b    # total
+
+"
+
+```
+
+```{r}
+cfa.1 <- cfa(modelo_latente1, data = db, ordered=colnames(db))
+summary(cfa.1, fit.measures = TRUE, ci = TRUE)
+fitMeasures(cfa.1)
+modificationindices(cfa.1, sort. = T, maximum.number = 10)
+```
+
+
+#Bootstrap
+```{r}
+modelo_latente1 <- sem(modelo_latente1, ordered = colnames(db), estimator="DWLS", data = db, se = "bootstrap", bootstrap = 5000)
+
+summary(modelo_latente1, standardized = TRUE, fit.measures = TRUE, ci = TRUE)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
