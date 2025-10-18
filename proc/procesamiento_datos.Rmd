@@ -1,0 +1,395 @@
+---
+title: "Untitled"
+author: "rmoraga"
+date: "2025-10-17"
+output: html_document
+---
+
+#Librerías
+```{r}
+library(readxl)
+library(dplyr)
+
+```
+
+#Cargar base de datos
+```{r}
+db_final <- read_excel("imput/db_final.xlsx")
+
+```
+
+#PEIEL
+```{r}
+# 2. Definir los niveles de la escala PEIEL (7 puntos Likert)
+niveles_peiel <- c(
+  "Extremadamente en desacuerdo",
+  "Muy en desacuerdo",
+  "En desacuerdo",
+  "Ni de acuerdo ni en desacuerdo",
+  "De acuerdo",
+  "Muy de acuerdo",
+  "Extremadamente de acuerdo"
+)
+
+# 3. Identificar las columnas correspondientes a la PEIEL
+# (ajusta el patrón si tus columnas tienen otro formato, por ejemplo “peiel_1”)
+cols_peiel <- grep("^PEIEL", names(db_final), value = TRUE)
+
+# 4. Transformar las respuestas textuales a valores numéricos (1–7)
+db_final <- db_final %>%
+  mutate(across(all_of(cols_peiel),
+                ~ as.numeric(factor(.x, levels = niveles_peiel))))
+
+```
+
+
+#SWB
+```{r}
+# 1. Definir los niveles de respuesta Likert (1 a 5)
+niveles_swb <- c(
+  "Totalmente en desacuerdo",
+  "En desacuerdo",
+  "Ni de acuerdo ni en desacuerdo",
+  "De acuerdo",
+  "Totalmente de acuerdo"
+)
+
+# 2. Identificar las columnas de la escala SWB
+cols_swb <- grep("^SWB", names(db_final), value = TRUE)
+
+# 3. Transformar las respuestas textuales en valores numéricos (1–5)
+db_final <- db_final %>%
+  mutate(across(all_of(cols_swb),
+                ~ as.numeric(factor(.x, levels = niveles_swb))))
+
+```
+
+
+#EDI
+```{r}
+# 1. Definir los niveles de respuesta (Likert 1 a 5)
+niveles_edi <- c(
+  "Totalmente en desacuerdo",
+  "En desacuerdo",
+  "Ni de acuerdo ni en desacuerdo",
+  "De acuerdo",
+  "Totalmente de acuerdo"
+)
+
+# 2. Identificar las columnas de la escala EDI
+cols_edi <- grep("^EDI_", names(db_final), value = TRUE)
+
+# 3. Transformar texto → número (1 a 5)
+db_final <- db_final %>%
+  mutate(across(all_of(cols_edi),
+                ~ as.numeric(factor(.x, levels = niveles_edi))))
+
+# 4. Invertir el ítem EDI_1 (porque está redactado en sentido contrario teórico)
+db_final <- db_final %>%
+  mutate(EDI_1 = 6 - EDI_1)
+
+```
+
+#MERIT_PERC
+```{r}
+# 1. Definir los niveles de respuesta (Likert 1 a 5)
+niveles_merit_perc <- c(
+  "Totalmente en desacuerdo",
+  "En desacuerdo",
+  "Ni de acuerdo ni en desacuerdo",
+  "De acuerdo",
+  "Totalmente de acuerdo"
+)
+
+# 2. Identificar las columnas de la escala MERIT_PERC
+cols_merit_perc <- grep("^MERIT_PERC_", names(db_final), value = TRUE)
+
+# 3. Transformar texto → número (1 a 5)
+db_final <- db_final %>%
+  mutate(across(all_of(cols_merit_perc),
+                ~ as.numeric(factor(.x, levels = niveles_merit_perc))))
+
+# 4. Invertir los ítems 3 y 4 (redactados en sentido contrario)
+db_final <- db_final %>%
+  mutate(
+    MERIT_PERC_3 = 6 - MERIT_PERC_3,
+    MERIT_PERC_4 = 6 - MERIT_PERC_4
+  )
+
+
+```
+
+
+
+
+
+#MERIT_PREF
+```{r}
+# 1. Definir los niveles de respuesta (Likert 1 a 5)
+niveles_merit <- c(
+  "Totalmente en desacuerdo",
+  "En desacuerdo",
+  "Ni de acuerdo ni en desacuerdo",
+  "De acuerdo",
+  "Totalmente de acuerdo"
+)
+
+# 2. Identificar las columnas de la escala MERIT_PREF
+cols_merit <- grep("^MERIT_PREF_", names(db_final), value = TRUE)
+
+# 3. Transformar texto → número (1 a 5)
+db_final <- db_final %>%
+  mutate(across(all_of(cols_merit),
+                ~ as.numeric(factor(.x, levels = niveles_merit))))
+
+# 4. Invertir los ítems 3 y 4 (porque están redactados en sentido contrario)
+db_final <- db_final %>%
+  mutate(
+    MERIT_PREF_3 = 6 - MERIT_PREF_3,
+    MERIT_PREF_4 = 6 - MERIT_PREF_4
+  )
+
+```
+
+
+
+#Género como factor
+```{r}
+db_final <- db_final %>%
+  mutate(
+    GENDER = factor(GENDER,
+                    levels = c("Hombre", "Mujer", "Género no-binario"),
+                    labels = c("Hombre", "Mujer", "No-binario"))
+  )
+
+# Verificar
+table(db_final$GENDER, useNA = "ifany")
+
+
+```
+
+#Género como numérica
+```{r}
+db_final <- db_final %>%
+  mutate(
+    GENDER_num = case_when(
+      GENDER == "Hombre" ~ 1,
+      GENDER == "Mujer" ~ 2,
+      GENDER == "No-binario" ~ 3,
+      TRUE ~ NA_real_
+    )
+  )
+
+# Verificar
+table(db_final$GENDER, db_final$GENDER_num)
+
+```
+
+#Edad en grupos
+```{r}
+library(dplyr)
+
+db_final <- db_final %>%
+  mutate(
+    EDAD_grupo = case_when(
+      AGE >= 18 & AGE <= 24 ~ "18–24",
+      AGE >= 25 & AGE <= 34 ~ "25–34",
+      AGE >= 35 & AGE <= 44 ~ "35–44",
+      AGE >= 45 & AGE <= 54 ~ "45–54",
+      AGE >= 55 & AGE <= 64 ~ "55–64",
+      AGE >= 65 ~ "70 o más",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Convertir en factor ordenado (útil para gráficos o análisis)
+db_final$EDAD_grupo <- factor(
+  db_final$EDAD_grupo,
+  levels = c("18–24", "25–34", "35–44", "45–54", "55–64", "70 o más"),
+  ordered = TRUE
+)
+
+# Verificar distribución
+table(db_final$EDAD_grupo, useNA = "ifany")
+
+```
+
+#IDEOL
+```{r}
+db_final <- db_final %>%
+  mutate(
+    IDEOL = str_extract(IDEOL, "\\d+"),   # extrae solo el número
+    IDEOL = as.numeric(IDEOL)         # convierte a número
+  )
+
+# Verificar resultado
+table(db_final$IDEOL, useNA = "ifany")
+
+```
+
+#IDEOL agrupado en IZQ, CEN, DER
+```{r}
+db_final <- db_final %>%
+  mutate(
+    IDEOL_agrupado = case_when(
+      IDEOL >= 1 & IDEOL <= 3 ~ "Izquierda",
+      IDEOL >= 4 & IDEOL <= 7 ~ "Centro",
+      IDEOL >= 8 & IDEOL <= 11 ~ "Derecha",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Convertir a factor ordenado (útil para gráficos y análisis)
+db_final$IDEOL_agrupado <- factor(
+  db_final$IDEOL_agrupado,
+  levels = c("Izquierda", "Centro", "Derecha"),
+  ordered = TRUE
+)
+
+# Verificar
+table(db_final$IDEOL_agrupado, useNA = "ifany")
+round(prop.table(table(db_final$IDEOL_agrupado)) * 100, 1)
+
+```
+
+#Education
+```{r}
+db_final <- db_final %>%
+  mutate(
+    EDUCATION_grupo = case_when(
+      EDUCATION %in% c("Sin estudios formales",
+                       "Básica incompleta",
+                       "Básica completa") ~ "1. Sin estudios / Básica",
+      
+      EDUCATION %in% c("Media científico humanista o media técnico profesional incompleta",
+                       "Media científico humanista o media técnico profesional completa") ~ "2. Media",
+      
+      EDUCATION %in% c("Instituto técnico (CFT) o instituto profesional incompleto",
+                       "Instituto técnico (CFT) o instituto profesional completo") ~ "3. Técnico (CFT/IP)",
+      
+      EDUCATION %in% c("Universitaria incompleta",
+                       "Universitaria completa") ~ "4. Universitario",
+      
+      EDUCATION %in% c("Postgrado") ~ "5. Postgrado",
+      
+      TRUE ~ NA_character_
+    )
+  )
+
+# Convertir el nuevo grupo a factor ordenado
+db_final$EDUCATION_grupo <- factor(
+  db_final$EDUCATION_grupo,
+  levels = c("1. Sin estudios / Básica",
+             "2. Media",
+             "3. Técnico (CFT/IP)",
+             "4. Universitario",
+             "5. Postgrado"),
+  ordered = TRUE
+)
+
+# Verificar resultados
+table(db_final$EDUCATION_grupo, useNA = "ifany")
+round(prop.table(table(db_final$EDUCATION_grupo)) * 100, 1)
+
+```
+
+#Ingreso per capita
+```{r}
+db_final <- db_final %>%
+  mutate(
+    INCOME_PC = INCOME / PC
+  )
+
+# Verificar
+summary(db_final$INCOME_PC)
+
+```
+
+#Quintiles de ingreso
+```{r}
+db_final <- db_final %>%
+  mutate(
+    QUINTIL = case_when(
+      INCOME_PC < 137500 ~ "Q1",
+      INCOME_PC >= 137533 & INCOME_PC < 240000 ~ "Q2",
+      INCOME_PC >= 240167 & INCOME_PC < 387262 ~ "Q3",
+      INCOME_PC >= 387292 & INCOME_PC < 680000 ~ "Q4",
+      INCOME_PC >= 680028 ~ "Q5",
+      TRUE ~ NA_character_
+    ),
+    QUINTIL = factor(
+      QUINTIL,
+      levels = c("Q1", "Q2", "Q3", "Q4", "Q5"),
+      ordered = TRUE
+    )
+  )
+
+# Verificar distribución
+table(db_final$QUINTIL, useNA = "ifany")
+round(prop.table(table(db_final$QUINTIL)) * 100, 1)
+
+```
+
+
+
+#FOC
+```{r}
+db_final <- db_final %>%
+  mutate(
+    FOC = case_when(
+      FOC == "Muy inseguro/a" ~ 4,
+      FOC == "Inseguro/a" ~ 3,
+      FOC == "Seguro/a" ~ 2,
+      FOC == "Muy seguro/a" ~ 1,
+      TRUE ~ NA_real_
+    )
+  )
+
+# Verificar
+table(db_final$FOC, db_final$FOC, useNA = "ifany")
+
+```
+
+#Confianza general
+```{r}
+library(dplyr)
+
+# 1. Definir niveles de respuesta
+niveles_trust <- c(
+  "Totalmente en desacuerdo",
+  "En desacuerdo",
+  "Ni de acuerdo ni en desacuerdo",
+  "De acuerdo",
+  "Totalmente de acuerdo"
+)
+
+# 2. Identificar columnas TRUST
+cols_trust <- grep("^TRUST_", names(db_final), value = TRUE)
+
+# 3. Transformar texto → valores numéricos (1 a 5)
+db_final <- db_final %>%
+  mutate(across(all_of(cols_trust),
+                ~ as.numeric(factor(.x, levels = niveles_trust))))
+
+# 4. Verificar
+summary(db_final[cols_trust])
+
+```
+
+#Exportar base de datos a imput
+```{r}
+library(writexl)
+
+writexl::write_xlsx(db_final, "db_final.xlsx")
+
+```
+
+
+
+
+
+
+
+
+
+
