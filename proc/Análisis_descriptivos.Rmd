@@ -5,7 +5,369 @@ date: "2025-10-18"
 output: html_document
 ---
 
+#Librerías
+```{r}
+library(ggplot2)
+library(dplyr)
+library(scales)
+library(readxl)
+library(psych)
+library(Hmisc)
 
+```
+
+
+#------------------DESCRIPTIVOS SOCIODEMOGRÁFICOS------------------#
+
+#Distribución por género
+```{r}
+table(db_final$GENDER)
+round(prop.table(table(db_final$GENDER)) * 100, 1)
+```
+
+```{r}
+#Visualización
+ggplot(db_final, aes(x = GENDER)) +
+  geom_bar(fill = "white", color = "black") +
+  geom_text(
+    aes(
+      y = after_stat(count),
+      label = percent(after_stat(prop), accuracy = 0.1),
+      group = 1
+    ),
+    stat = "count",
+    vjust = -0.4
+  ) +
+  labs(title = "Distribución por género", x = "Género", y = "Porcentaje") +
+  theme_minimal(base_size = 13)
+```
+
+
+#Grupos etarios
+```{r}
+table(db_final$EDAD_grupo)
+round(prop.table(table(db_final$EDAD_grupo)) * 100, 1)
+```
+
+```{r}
+#Visualización
+
+# Calcular frecuencias y porcentajes
+df_edad <- db_final %>%
+  count(EDAD_grupo) %>%
+  mutate(pct = n / sum(n))
+
+# Gráfico
+ggplot(df_edad, aes(x = EDAD_grupo, y = pct)) +
+  geom_col(fill = "white", color = "black") +
+  geom_text(aes(label = percent(pct, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  labs(title = "Distribución por grupo etario",
+       x = "Grupo etario", 
+       y = "Porcentaje") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.text.x = element_text(angle = 25, hjust = 1),
+    axis.text = element_text(color = "black")
+  )
+
+```
+
+
+#Nivel educacional alcanzado
+```{r}
+table(db_final$EDUCATION_grupo)
+round(prop.table(table(db_final$EDUCATION_grupo)) * 100, 1)
+
+```
+
+```{r}
+#Visualización
+# Calcular frecuencias y porcentajes
+df_educ <- db_final %>%
+  count(EDUCATION_grupo) %>%
+  mutate(pct = n / sum(n))
+
+# Gráfico
+ggplot(df_educ, aes(x = EDUCATION_grupo, y = pct)) +
+  geom_col(fill = "white", color = "black") +
+  geom_text(aes(label = percent(pct, accuracy = 0.1)),
+            vjust = -0.5, size = 3) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  labs(title = "Nivel educacional alcanzado",
+       x = "Nivel educativo",
+       y = "Porcentaje") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.text.x = element_text(angle = 25, hjust = 1),
+    axis.text = element_text(color = "black")
+  )
+
+```
+
+
+#Quintiles de ingreso
+```{r}
+table(db_final$QUINTIL)
+round(prop.table(table(db_final$QUINTIL)) * 100, 1)
+
+```
+
+```{r}
+#Visualización
+# Calcular frecuencias y porcentajes
+df_quintil <- db_final %>%
+  count(QUINTIL) %>%
+  mutate(pct = n / sum(n))
+
+# Gráfico
+ggplot(df_quintil, aes(x = QUINTIL, y = pct)) +
+  geom_col(fill = "white", color = "black", width = 0.7) +
+  geom_text(aes(label = percent(pct, accuracy = 0.1)),
+            vjust = -0.3, size = 4, fontface = "bold") +
+  scale_y_continuous(labels = percent_format(accuracy = 1),
+                     expand = expansion(mult = c(0, 0.1))) +
+  labs(
+    title = "Distribución por quintil de ingreso per cápita",
+    x = "Quintil socioeconómico (CASEN 2022)",
+    y = "Porcentaje"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.text.x = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank()
+  )
+
+```
+
+
+#IDEOL
+```{r}
+table(db_final$IDEOL_agrupado)
+round(prop.table(table(db_final$IDEOL_agrupado)) * 100, 1)
+
+```
+```{r}
+#Visualización
+# Asegurar orden correcto de los niveles
+db_final$IDEOL_agrupado <- factor(
+  db_final$IDEOL_agrupado,
+  levels = c("Izquierda", "Centro", "Derecha"),
+  ordered = TRUE
+)
+
+# Calcular frecuencias y porcentajes
+df_ideol_bloque <- db_final %>%
+  count(IDEOL_agrupado) %>%
+  mutate(pct = n / sum(n))
+
+# Graficar
+ggplot(df_ideol_bloque, aes(x = IDEOL_agrupado, y = pct)) +
+  geom_col(fill = "white", color = "black", width = 0.7) +
+  geom_text(aes(label = percent(pct, accuracy = 0.1)),
+            vjust = -0.3, size = 4, fontface = "bold") +
+  scale_y_continuous(labels = percent_format(accuracy = 1),
+                     expand = expansion(mult = c(0, 0.1))) +
+  labs(
+    title = "Distribución ideológica (bloques)",
+    x = "Bloque ideológico",
+    y = "Porcentaje"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.text.x = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank()
+  )
+
+
+```
+
+
+#------------------DESCRIPTIVOS VARIABLES PRINCIPALES------------------#
+
+#Medias
+```{r}
+db_final <- db_final %>%
+  mutate(
+    
+    # --- PEIEL ---
+    PEIEL_index = rowMeans(select(., starts_with("PEIEL")), na.rm = TRUE),
+    PEIEL_ABS = rowMeans(select(., PEIEL_1, PEIEL_2, PEIEL_3), na.rm = TRUE),
+    PEIEL_AF = rowMeans(select(., PEIEL_4, PEIEL_5, PEIEL_6), na.rm = TRUE),
+
+
+    # --- Bienestar subjetivo ---
+    SWB_index = rowMeans(select(., starts_with("SWB")), na.rm = TRUE),
+    
+    # --- Evaluación Injusticia Distributiva ---
+        EDI_index = rowMeans(select(., starts_with("EDI_")), na.rm = TRUE),
+
+    
+    # --- Percepciones meritocráticas ---
+    MERIT_PERC_merit_index = rowMeans(select(., MERIT_PERC_1, MERIT_PERC_2), na.rm = TRUE),
+    MERIT_PERC_noMerit_index = rowMeans(select(., MERIT_PERC_3, MERIT_PERC_4), na.rm = TRUE),
+    
+    # --- Preferencias meritocráticas ---
+    MERIT_PREF_merit_index = rowMeans(select(., MERIT_PREF_1, MERIT_PREF_2), na.rm = TRUE),
+    MERIT_PREF_noMerit_index = rowMeans(select(., MERIT_PREF_3, MERIT_PREF_4), na.rm = TRUE),
+    
+    # --- Escalas restantes ---
+    TRUST_index = rowMeans(select(., starts_with("TRUST_")), na.rm = TRUE)
+  )
+
+```
+
+
+#Descriptivos
+```{r}
+describe(db_final %>%
+  select(PEIEL_index, PEIEL_ABS, PEIEL_AF,  EDI_index, SWB_index,
+         MERIT_PERC_merit_index, MERIT_PERC_noMerit_index,
+         MERIT_PREF_merit_index, MERIT_PREF_noMerit_index,
+         ))
+
+```
+
+#------------------PRUEBA DE NORMALIDAD------------------#
+
+
+```{r}
+# Variables a evaluar
+vars_norm <- c("PEIEL_index", "PEIEL_ABS", "PEIEL_AF", 
+               "EDI_index", "SWB_index",
+               "MERIT_PERC_merit_index", "MERIT_PERC_noMerit_index",
+               "MERIT_PREF_merit_index", "MERIT_PREF_noMerit_index")
+
+# Prueba Kolmogórov–Smirnov para cada variable
+ks_results <- lapply(vars_norm, function(v) {
+  x <- db_final[[v]]
+  x <- x[!is.na(x)]  # quitar NA
+  ks <- ks.test(x, "pnorm", mean = mean(x), sd = sd(x))
+  data.frame(
+    Variable = v,
+    D = round(ks$statistic, 3),
+    p_value = round(ks$p.value, 4)
+  )
+})
+
+# Convertir resultados en tabla
+ks_results <- do.call(rbind, ks_results)
+ks_results
+
+#La prueba de normalidad de Kolmogórov–Smirnov indicó que todas las variables analizadas difieren significativamente de la distribución normal (p < .001).
+```
+
+
+#------------------Relaciones entre variables------------------#
+
+
+#Correlaciones bivariadas Spearman
+```{r}
+vars_corr <- db_final %>%
+  select(PEIEL_index, PEIEL_ABS, PEIEL_AF, EDI_index, SWB_index,
+           MERIT_PERC_merit_index, MERIT_PREF_merit_index)
+
+res <- rcorr(as.matrix(vars_corr), type = "spearman")
+
+# Correlaciones
+round(res$r, 2)
+
+# Valores p
+round(res$P, 4)
+
+#Se observaron correlaciones significativas entre la percepción de desigualdad económica (PEIEL) y la evaluación de injusticia distributiva (r = .25, p < .001), así como con las percepciones meritocráticas (r = –.15, p < .001). La relación entre desigualdad percibida y bienestar subjetivo fue débil pero significativa (r = –.08, p = .022). En cambio, las preferencias meritocráticas (MERIT_PREF) no mostraron asociaciones significativas con las demás variables
+
+
+```
+
+#Regresiones
+```{r}
+# 1. EDI ~ PEIEL
+a <- lm(EDI_index ~ PEIEL_index, data = db_final)
+
+# 2. SWB ~ PEIEL
+c <- lm(SWB_index ~ PEIEL_index, data = db_final)
+
+# 3. SWB ~ EDI
+b <- lm(SWB_index ~ EDI_index, data = db_final)
+
+# Resultados
+summary(a)
+summary(c)
+summary(b)
+
+
+```
+
+#---------------GRAFICOS VIARIABLES INTERÉS------------------#
+```{r}
+library(tidyverse)
+library(glue)
+
+# 1) Define las variables principales + dimensiones PEIEL
+vars <- c(
+  PEIEL_index             = "Desigualdad percibida (PEIEL total)",
+  PEIEL_ABS               = "Acceso a bienes y servicios (PEIEL D1)",
+  PEIEL_AF                = "Adversidad financiera (PEIEL D2)",
+  EDI_index               = "Injusticia distributiva (EID)",
+  SWB_index               = "Bienestar subjetivo (SWB)",
+  MERIT_PERC_merit_index  = "Percepción de la meritocracia",
+  MERIT_PREF_merit_index  = "Preferencia por la meritocracia"
+)
+
+# === A) GRÁFICOS DE DENSIDAD (tendencia general) ===
+for (vn in names(vars)) {
+  p <- db_final %>%
+    select({{vn}}) %>%
+    rename(valor = {{vn}}) %>%
+    filter(!is.na(valor)) %>%
+    ggplot(aes(x = valor)) +
+    geom_density(fill = "grey80", color = "black", alpha = 0.7) +
+    geom_rug(sides = "b", color = "black", alpha = 0.3) +
+    coord_cartesian(xlim = c(1, 7)) +
+    labs(
+      title = glue("Distribución de {vars[[vn]]}"),
+      x = "Puntaje (1–7)",
+      y = "Densidad"
+    ) +
+    theme_minimal(base_size = 13)
+
+  print(p)
+  # ggsave(glue("densidad_{vn}.png"), p, width = 7, height = 4.5, dpi = 300)  # opcional
+}
+
+# === B) GRÁFICOS DE BARRAS EN PORCENTAJE (categorías 1–7) ===
+for (vn in names(vars)) {
+  p <- db_final %>%
+    select({{vn}}) %>%
+    rename(valor = {{vn}}) %>%
+    filter(!is.na(valor)) %>%
+    mutate(cat = factor(round(valor), levels = 1:7)) %>%
+    count(cat, name = "n") %>%
+    mutate(prop = 100 * n / sum(n)) %>%
+    ggplot(aes(x = cat, y = prop)) +
+    geom_col(fill = "white", color = "black") +
+    labs(
+      title = glue("Distribución porcentual de {vars[[vn]]}"),
+      x = "Escala Likert",
+      y = "% de personas"
+    ) +
+    theme_minimal(base_size = 13)
+
+  print(p)
+  # ggsave(glue("barras_{vn}.png"), p, width = 7, height = 4.5, dpi = 300)  # opcional
+}
+
+```
 
 
 
