@@ -8,13 +8,23 @@ output: html_document
 #Librerías
 ```{r}
 library(openxlsx)
+library(readxl)
 library(lavaan)
+library(DiagrammeR)
+library(DiagrammeRsvg)
+library(rsvg)
+
+
 ```
 
 #Abrir base
 ```{r}
-db<-read.xlsx("imput/db_final.xlsx")
+db_final <- read_excel("input/db_final.xlsx")
+
 ```
+
+
+#-------------------------PEIEL UNIDIMENSIONAL---------------------------#
 
 
 ```{r}
@@ -24,7 +34,7 @@ PEIEL =~ PEIEL_1 + PEIEL_2 + PEIEL_3 + PEIEL_4 + PEIEL_5 + PEIEL_6
 EDI   =~ EDI_1   + EDI_2   + EDI_3   + EDI_4
 SWB   =~ SWB_1   + SWB_2   + SWB_3   + SWB_4 + SWB_5
 
-# Estructural (mediación simple)
+# Modelo Estructural (mediación simple)
 EDI ~ a*PEIEL
 SWB ~ b*EDI + c*PEIEL
 
@@ -58,11 +68,180 @@ summary(modelo_latente1, standardized = TRUE, fit.measures = TRUE, ci = TRUE)
 
 
 
+#-------------------------PEIEL BIDIMENSIONAL---------------------------#
+
+```{r}
+modelo_latente2 <- "
+# Modelo de Medición
+PEIEL.A =~ PEIEL_1 + PEIEL_2 + PEIEL_3
+PEIEL.B =~ PEIEL_4 + PEIEL_5 + PEIEL_6
+EDI   =~ EDI_1 + EDI_2   + EDI_3   + EDI_4
+SWB   =~ SWB_1   + SWB_2   + SWB_3   + SWB_4 + SWB_5
+
+#Modelo estructural
+EDI ~ a1*PEIEL.A + a2*PEIEL.B
+SWB ~ b*EDI + c1*PEIEL.A + c2*PEIEL.B
+
+# Efecto indirecto
+ab1 := a1*b
+ab2 := a2*b
+
+# Efectos totales
+total1 := c1 + (a1*b)
+total2 := c2 + (a2*b)
+
+# Proporción mediada
+prop1 := (a1*b) / (c1 + a1*b)
+prop2 := (a2*b) / (c2 + a2*b)
+
+"
+
+```
+
+```{r}
+cfa.2 <- cfa(modelo_latente2, data = db, ordered=colnames(db))
+summary(cfa.2, fit.measures = TRUE, ci = TRUE)
+fitMeasures(cfa.2)
+modificationindices(cfa.2, sort. = T, maximum.number = 10)
+```
+
+
+#Bootstrap
+```{r}
+modelo_latente2 <- sem(modelo_latente2, ordered = colnames(db), estimator="DWLS", data = db, se = "bootstrap", bootstrap = 5000)
+
+summary(modelo_latente2, standardized = TRUE, fit.measures = TRUE, ci = TRUE)
+
+
+```
 
 
 
+#-------------------------VISUALIZACIONES---------------------------#
 
 
+#PEIEL unidimensional
+```{r}
+grViz("
+digraph MediationModel {
+
+  # Configuración general
+  graph [
+    layout = dot,
+    rankdir = LR,
+    fontsize = 12,
+    fontname = Helvetica
+  ]
+
+  # Nodos (rectángulos blancos)
+  node [
+    shape = rectangle,
+    style = filled,
+    fillcolor = white,
+    color = black,
+    fontname = Helvetica,
+    fontsize = 11,
+    width = 2.8,
+    height = 0.9,
+    fixedsize = false
+  ]
+
+  # Variables del modelo
+  PEIEL [label = 'PEIEL\\nPercepción de desigualdad']
+  EDI   [label = 'EDI\\nEvaluación de injusticia distributiva']
+  SWB   [label = 'SWB\\nBienestar subjetivo']
+
+  # Flechas y relaciones
+  edge [
+    color = black,
+    arrowsize = 0.8,
+    penwidth = 1.2,
+    fontname = Helvetica,
+    fontsize = 10
+  ]
+
+  # Caminos principales
+  PEIEL -> EDI [label = '+0.31 ***']
+  EDI -> SWB [label = '−0.16 **']
+  PEIEL -> SWB [label = '−0.03 ns']
+
+  # Título
+  labelloc = 't'
+  label = 'Modelo de mediación: Percepción de desigualdad → Injusticia distributiva → Bienestar subjetivo'
+
+}
+")
+
+#Guardada en /output
+
+
+```
+
+
+#PEIEL bidimensional
+```{r}
+grViz("
+digraph SEM_Model {
+
+  # Configuración general
+  graph [
+    layout = dot,
+    rankdir = LR,
+    fontsize = 12,
+    fontname = Helvetica
+  ]
+
+  # Estilo de nodos
+  node [
+    shape = rectangle,
+    style = filled,
+    fillcolor = white,
+    color = black,
+    fontname = Helvetica,
+    fontsize = 11,
+    width = 2.6,
+    height = 0.9,
+    fixedsize = false
+  ]
+
+  # Variables
+  PEIEL_ABS [label = 'PEIEL_ABS\\nDesigualdad en acceso a bienes y servicios']
+  PEIEL_AF  [label = 'PEIEL_AF\\nDesigualdad en adversidad financiera']
+  EDI       [label = 'EDI\\nEvaluación de injusticia distributiva']
+  SWB       [label = 'SWB\\nBienestar subjetivo']
+
+  # Alinear las dos variables PEIEL en el mismo nivel
+  { rank = same; PEIEL_ABS; PEIEL_AF }
+
+  # Relaciones (líneas y etiquetas)
+  edge [
+    color = black,
+    arrowsize = 0.7,
+    penwidth = 1.1,
+    fontname = Helvetica,
+    fontsize = 10
+  ]
+
+  # Caminos estructurales
+  PEIEL_ABS -> EDI [label = '-0.10 ns']
+  PEIEL_AF  -> EDI [label = '+0.43 ***']
+  EDI -> SWB [label = '-0.13 *']
+  PEIEL_ABS -> SWB [label = '+0.22 ***']
+  PEIEL_AF  -> SWB [label = '-0.25 **']
+
+  # Covarianza entre las dos dimensiones
+  PEIEL_ABS -> PEIEL_AF [dir=both, label='r = .74 ***', style=dashed, arrowsize=0.5]
+
+  # Título general
+  labelloc = 't'
+  label = 'Modelo de mediación: Percepciones de desigualdad → Injusticia distributiva → Bienestar subjetivo'
+
+}
+")
+
+#Guardada en /output
+
+```
 
 
 
