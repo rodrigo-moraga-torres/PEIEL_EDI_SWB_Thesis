@@ -19,7 +19,7 @@ library(rsvg)
 
 #Abrir base
 ```{r}
-db_final <- read_excel("input/db_final.xlsx")
+db_final <- read_excel("C:/Users/romor/OneDrive/Documentos/GitHub/PEIEL_EID_SWB_Thesis/input/db_final.xlsx")
 
 ```
 
